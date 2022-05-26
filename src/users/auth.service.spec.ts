@@ -3,6 +3,7 @@ import {async} from 'rxjs';
 import {AuthService} from './auth.service';
 import {UsersService} from './users.service';
 import {User} from "./user.entity";
+import {assignToken} from "@nestjs/core/middleware/utils";
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -10,10 +11,17 @@ describe('AuthService', () => {
 
     beforeEach(async () => {
         // Create a fake copy of the users service
+        const users: User[] = [];
         const fakeUsersService = {
-            find: () => Promise.resolve([]),
-            create: (email: string, password: string) =>
-                Promise.resolve({id: 1, email, password} as User),
+            find: (email: string) => {
+                const filteredUsers = users.filter(user => user.email === email);
+                return Promise.resolve(filteredUsers);
+            },
+            create: (email: string, password: string) => {
+                const user = {id: Math.floor(Math.random() * 999999), email, password} as User;
+                users.push(user);
+                return Promise.resolve(user);
+            }
         };
 
         const module = await Test.createTestingModule({
@@ -40,8 +48,7 @@ describe('AuthService', () => {
     });
 
     it('throws an error if user signs up with email that is in use', async (done) => {
-        fakeUsersService.find = () => Promise.resolve([{id: 1, email: 'a', password: '1'} as User]);
-
+        await service.signup('asdf@asdf.com', 'asdf');
         try {
             await service.signup('asdf@asdf.com', 'asdf');
         } catch (err) {
@@ -58,9 +65,7 @@ describe('AuthService', () => {
     });
 
     it('throws if an invalid password is provided', async (done) => {
-        fakeUsersService.find =
-            () => Promise.resolve([{email: 'asdf@asdf.com', password: 'asdf'} as User]);
-
+        await service.signup('asdfjd@aoks.com', 'asjdowjd');
         try {
             await service.signin('laslas@fklas.com', 'pasword')
         } catch (err) {
@@ -82,6 +87,23 @@ describe('AuthService', () => {
         } catch (err) {
             done();
         }
+    });
+
+    it('throws if an invalid password is provided ', async (done) => {
+        fakeUsersService.find =
+            () => Promise.resolve([{email: 'asdf@asdf.com', password: 'laskls'} as User]);
+        try {
+            await service.signin('lakslaks@aldkla.com', 'pasoowd');
+        } catch (err) {
+            done();
+        }
+    });
+
+    it('returns a user if correct password is provided', async (done) => {
+        await service.signup('asdf@asdf.com', 'mypassword');
+
+        const user = await service.signin('asdf@asdf.com', 'mypassword');
+        expect(user).toBeDefined();
     });
 });
 
