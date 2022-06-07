@@ -10,12 +10,7 @@ async function bootstrap() {
       keys: ['asfas'],
     }),
   );
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-    }),
-  );
+  app.useGlobalPipes();
   await app.listen(3000);
 }
-
 bootstrap();
